@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MG Risk & Symptom Questionnaire</title>
+
+    <!-- Chart.js for the results pie chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f7fa;
+            margin: 0;
+            padding: 30px;
+            color: #222;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.08);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        h2 {
+            margin-top: 35px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 8px;
+        }
+
+        h3 {
+            margin-top: 0;
+        }
+
+        .intro {
+            background: #eef4ff;
+            padding: 18px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border-left: 5px solid #2563eb;
+        }
+
+        .disclaimer {
+            background: #fff8e6;
+            border-left: 5px solid #f59e0b;
+            padding: 18px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+
+        .disclaimer strong {
+            color: #92400e;
+        }
+
+        .question {
+            margin: 18px 0;
+            padding: 18px;
+            background: #fafafa;
+            border-radius: 10px;
+            border: 1px solid #eee;
+        }
+
+        .question p.qtext {
+            font-weight: bold;
+            margin-top: 0;
+        }
+
+        label {
+            display: block;
+            margin: 8px 0;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 7px;
+            margin-top: 6px;
+            font-family: inherit;
+            font-size: 15px;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        .yn-group {
+            display: flex;
+            gap: 20px;
+            margin-top: 8px;
+        }
+
+        .yn-group label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: normal;
+            margin: 0;
+        }
+
+        .severity-box {
+            display: none;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px dashed #ccc;
+        }
+
+        .severity-box.visible {
+            display: block;
+        }
+
+        .severity-box p {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            color: #444;
+        }
+
+        .severity-scale {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .severity-scale label {
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 6px 10px;
+            margin: 0;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .severity-scale input {
+            margin-right: 4px;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            margin-top: 30px;
+            border: none;
+            border-radius: 8px;
+            background: #2563eb;
+            color: white;
+            font-size: 17px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        #results {
+            display: none;
+            margin-top: 35px;
+        }
+
+        .score-summary {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .score-card {
+            flex: 1;
+            min-width: 160px;
+            background: #f0f4ff;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .score-card .value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2563eb;
+        }
+
+        .score-card .label {
+            font-size: 13px;
+            color: #555;
+            margin-top: 4px;
+        }
+
+        .grading-key {
+            background: #f5f7fa;
+            border-radius: 10px;
+            padding: 16px;
+            margin: 20px 0;
+        }
+
+        .grading-key table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .grading-key th, .grading-key td {
+            text-align: left;
+            padding: 6px 8px;
+            border-bottom: 1px solid #e2e2e2;
+        }
+
+        .grading-key tr.active {
+            background: #dbeafe;
+            font-weight: bold;
+        }
+
+        .chart-wrap {
+            max-width: 380px;
+            margin: 20px auto;
+        }
+
+        .overlap-card {
+            background: #fdf2f8;
+            border-left: 5px solid #db2777;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin: 12px 0;
+        }
+
+        .overlap-card h4 {
+            margin: 0 0 8px 0;
+        }
+
+        .overlap-card ul {
+            margin: 6px 0 0 0;
+            padding-left: 20px;
+        }
+
+        .med-note {
+            background: #eefdf3;
+            border-left: 5px solid #16a34a;
+            border-radius: 10px;
+            padding: 12px 18px;
+            margin: 10px 0;
+        }
+
+        .breakdown-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .breakdown-table th, .breakdown-table td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>MG Risk & Symptom Questionnaire</h1>
+
+    <div class="intro">
+        This questionnaire gathers information about diagnosis history, family
+        history, and common Myasthenia Gravis (MG) symptoms. It is a screening
+        prototype, not a diagnostic tool.
+    </div>
+
+    <div class="disclaimer">
+        <strong>Disclaimer:</strong> This tool is for informational and
+        educational purposes only and does not diagnose MG, Thymoma, or any
+        other condition. The symptoms below can also occur in many other
+        conditions. Always consult a qualified healthcare professional about
+        new, persistent, or worsening symptoms, and before starting, stopping,
+        or changing any medication.
+    </div>
+
+    <form id="questionnaire-form">
+
+        <h2>Basic Information</h2>
+
+        <div class="question">
+            <p class="qtext">1. Name</p>
+            <input type="text" id="q1" name="q1" placeholder="Your name">
+        </div>
+
+        <div class="question">
+            <p class="qtext">2. Age</p>
+            <input type="text" id="q2" name="q2" placeholder="Your age">
+        </div>
+
+        <h2>Diagnosis & Family History</h2>
+        <div id="risk-questions"></div>
+
+        <h2>Symptoms</h2>
+        <p style="color:#555; font-size: 14px;">
+            For each symptom, select Yes or No. If Yes, rate how severe it has
+            been on a scale of 1 (mild) to 10 (severe).
+        </p>
+        <div id="severity-questions"></div>
+
+        <h2>Medications</h2>
+
+        <div class="question">
+            <p class="qtext">14. Any medications? (list all that apply)</p>
+            <textarea id="q14" name="q14" rows="3" placeholder="e.g. pyridostigmine, prednisone..."></textarea>
+        </div>
+
+        <button type="submit">Submit Questionnaire</button>
+
+    </form>
+
+    <div id="results">
+
+        <h2>Results</h2>
+
+        <div class="score-summary">
+            <div class="score-card">
+                <div class="value" id="riskScoreValue">0 / 50</div>
+                <div class="label">Diagnosis / Risk Factor Score</div>
+            </div>
+            <div class="score-card">
+                <div class="value" id="severityScoreValue">0 / 60</div>
+                <div class="label">Symptom Severity Score</div>
+            </div>
+            <div class="score-card">
+                <div class="value" id="totalScoreValue">0 / 110</div>
+                <div class="label">Total Score</div>
+            </div>
+        </div>
+
+        <div class="grading-key">
+            <h3>Likelihood Grading Key</h3>
+            <table id="gradingTable">
+                <tr>
+                    <th>Band</th>
+                    <th>Score Range</th>
+                    <th>Meaning</th>
+                </tr>
+                <tr data-band="Low">
+                    <td>Low</td>
+                    <td>0-15</td>
+                    <td>Few risk factors or symptoms reported</td>
+                </tr>
+                <tr data-band="Mild-Moderate">
+                    <td>Mild-Moderate</td>
+                    <td>16-40</td>
+                    <td>Some risk factors and/or mild symptoms</td>
+                </tr>
+                <tr data-band="Moderate-High">
+                    <td>Moderate-High</td>
+                    <td>41-70</td>
+                    <td>Multiple risk factors and/or moderate symptoms</td>
+                </tr>
+                <tr data-band="High">
+                    <td>High</td>
+                    <td>71-110</td>
+                    <td>Substantial risk factors and/or severe symptoms</td>
+                </tr>
+            </table>
+            <p id="gradingDescription" style="margin-top: 12px; font-weight: bold;"></p>
+        </div>
+
+        <div class="chart-wrap">
+            <canvas id="scoreChart"></canvas>
+        </div>
+
+        <h3>Question-by-Question Breakdown</h3>
+        <table class="breakdown-table" id="breakdownTable">
+            <tr>
+                <th>Question</th>
+                <th>Answer</th>
+                <th>Score</th>
+            </tr>
+        </table>
+
+        <h3>Overlapping Symptom Reference</h3>
+        <p style="color:#555; font-size: 14px;">
+            The symptoms you reported "Yes" to can also occur in other
+            conditions, listed below for context. This is not a differential
+            diagnosis.
+        </p>
+        <div id="overlapContainer"></div>
+
+        <h3>Medication Notes</h3>
+        <div id="medicationContainer"></div>
+
+        <div class="disclaimer" id="finalDisclaimer" style="margin-top: 25px;"></div>
+
+    </div>
+
+</div>
+
+<script>
+
+    // =====================================================
+    // QUESTION DEFINITIONS (must match app.py)
+    // =====================================================
+
+    const RISK_QUESTIONS = [
+        { id: "q3", num: 3, text: "Diagnosis of MG?" },
+        { id: "q4", num: 4, text: "Diagnosis of Thymoma?" },
+        { id: "q5", num: 5, text: "Thymectomy?" },
+        { id: "q6", num: 6, text: "Anyone in family has MG?" },
+        { id: "q7", num: 7, text: "Any other autoimmune diseases?" }
+    ];
+
+    const SEVERITY_QUESTIONS = [
+        { id: "q8", num: 8, text: "Slurring of speech?" },
+        { id: "q9", num: 9, text: "Trouble eating, chewing, or swallowing?" },
+        { id: "q10", num: 10, text: "Experienced shortness of breath?" },
+        { id: "q11", num: 11, text: "Ever experienced trouble standing up from a chair?" },
+        { id: "q12", num: 12, text: "Ever experienced diplopia (double vision)?" },
+        { id: "q13", num: 13, text: "Experienced ptosis (eyelid droop)?" }
+    ];
+
+    // =====================================================
+    // RENDER QUESTIONS
+    // =====================================================
+
+    function renderYesNo(container, question, withSeverity) {
+
+        const wrap = document.createElement("div");
+        wrap.className = "question";
+
+        const severityOptions = [1,2,3,4,5,6,7,8,9,10].map(n =>
+            `<label><input type="radio" name="${question.id}_severity" value="${n}">${n}</label>`
+        ).join("");
+
+        wrap.innerHTML = `
+            <p class="qtext">${question.num}. ${question.text}</p>
+            <div class="yn-group">
+                <label><input type="radio" name="${question.id}_answer" value="yes"> Yes</label>
+                <label><input type="radio" name="${question.id}_answer" value="no"> No</label>
+            </div>
+            ${withSeverity ? `
+            <div class="severity-box" id="${question.id}_severity_box">
+                <p>Rate severity (1 = mild, 10 = severe):</p>
+                <div class="severity-scale">${severityOptions}</div>
+            </div>` : ""}
+        `;
+
+        container.appendChild(wrap);
+
+        const radios = wrap.querySelectorAll(`input[name="${question.id}_answer"]`);
+
+        if (withSeverity) {
+
+            const severityBox = wrap.querySelector(`#${question.id}_severity_box`);
+
+            radios.forEach(radio => {
+                radio.addEventListener("change", () => {
+                    if (radio.value === "yes" && radio.checked) {
+                        severityBox.classList.add("visible");
+                    } else if (radio.value === "no" && radio.checked) {
+                        severityBox.classList.remove("visible");
+                    }
+                });
+            });
+
+        }
+
+    }
+
+    const riskContainer = document.getElementById("risk-questions");
+    RISK_QUESTIONS.forEach(q => renderYesNo(riskContainer, q, false));
+
+    const severityContainer = document.getElementById("severity-questions");
+    SEVERITY_QUESTIONS.forEach(q => renderYesNo(severityContainer, q, true));
+
+    // =====================================================
+    // COLLECT ANSWERS & SUBMIT
+    // =====================================================
+
+    let scoreChart = null;
+
+    document.getElementById("questionnaire-form").addEventListener("submit", async function(e) {
+
+        e.preventDefault();
+
+        const answers = {};
+
+        [...RISK_QUESTIONS, ...SEVERITY_QUESTIONS].forEach(q => {
+
+            const answerRadio = document.querySelector(`input[name="${q.id}_answer"]:checked`);
+            const isYes = answerRadio ? answerRadio.value === "yes" : false;
+
+            let severity = null;
+
+            if (isYes) {
+                const severityRadio = document.querySelector(`input[name="${q.id}_severity"]:checked`);
+                severity = severityRadio ? parseInt(severityRadio.value, 10) : 1;
+            }
+
+            answers[q.id] = {
+                answer: isYes,
+                severity: severity
+            };
+
+        });
+
+        const payload = {
+            name: document.getElementById("q1").value,
+            age: document.getElementById("q2").value,
+            medications: document.getElementById("q14").value,
+            answers: answers
+        };
+
+        const response = await fetch("/api/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            alert(data.error || "Something went wrong.");
+            return;
+        }
+
+        renderResults(data);
+
+    });
+
+    // =====================================================
+    // RENDER RESULTS
+    // =====================================================
+
+    function renderResults(data) {
+
+        document.getElementById("results").style.display = "block";
+
+        document.getElementById("riskScoreValue").textContent =
+            `${data.scores.riskScore} / ${data.scores.maxRiskScore}`;
+
+        document.getElementById("severityScoreValue").textContent =
+            `${data.scores.severityScore} / ${data.scores.maxSeverityScore}`;
+
+        document.getElementById("totalScoreValue").textContent =
+            `${data.scores.totalScore} / ${data.scores.maxTotalScore}`;
+
+        // Grading key highlight
+        document.querySelectorAll("#gradingTable tr[data-band]").forEach(row => {
+            row.classList.toggle("active", row.dataset.band === data.grading.band);
+        });
+
+        document.getElementById("gradingDescription").textContent =
+            `${data.grading.band}: ${data.grading.description}`;
+
+        // Breakdown table
+        const breakdownTable = document.getElementById("breakdownTable");
+        breakdownTable.innerHTML = `<tr><th>Question</th><th>Answer</th><th>Score</th></tr>`;
+
+        data.scores.breakdown.forEach(row => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td>${row.label}</td><td>${row.answer}</td><td>${row.score} / ${row.max}</td>`;
+            breakdownTable.appendChild(tr);
+        });
+
+        // Overlap cards
+        const overlapContainer = document.getElementById("overlapContainer");
+        overlapContainer.innerHTML = "";
+
+        if (data.scores.overlaps.length === 0) {
+            overlapContainer.innerHTML = "<p>No symptoms marked 'Yes' — no overlap references to show.</p>";
+        } else {
+            data.scores.overlaps.forEach(overlap => {
+                const card = document.createElement("div");
+                card.className = "overlap-card";
+                card.innerHTML = `
+                    <h4>${overlap.symptom} (severity ${overlap.severity}/10)</h4>
+                    <p style="margin:0;">Also seen in:</p>
+                    <ul>${overlap.overlapping_conditions.map(c => `<li>${c}</li>`).join("")}</ul>
+                `;
+                overlapContainer.appendChild(card);
+            });
+        }
+
+        // Medication notes
+        const medContainer = document.getElementById("medicationContainer");
+        medContainer.innerHTML = "";
+
+        if (!data.medications.input || data.medications.input.trim() === "") {
+            medContainer.innerHTML = "<p>No medications entered.</p>";
+        } else if (data.medications.matches.length === 0) {
+            medContainer.innerHTML = "<p>No matches found in the reference database for the medications entered. This does not mean there are no interactions — always check with a pharmacist or doctor.</p>";
+        } else {
+            data.medications.matches.forEach(match => {
+                const note = document.createElement("div");
+                note.className = "med-note";
+                note.innerHTML = `<strong>${match.matched}</strong>: ${match.note}`;
+                medContainer.appendChild(note);
+            });
+        }
+
+        // Final disclaimer
+        document.getElementById("finalDisclaimer").innerHTML = `<strong>Disclaimer:</strong> ${data.disclaimer}`;
+
+        // Pie chart
+        const ctx = document.getElementById("scoreChart").getContext("2d");
+
+        const chartLabels = data.scores.breakdown
+            .filter(row => row.score > 0)
+            .map(row => row.label);
+
+        const chartValues = data.scores.breakdown
+            .filter(row => row.score > 0)
+            .map(row => row.score);
+
+        if (chartLabels.length === 0) {
+            chartLabels.push("No points scored");
+            chartValues.push(1);
+        }
+
+        if (scoreChart) {
+            scoreChart.destroy();
+        }
+
+        scoreChart = new Chart(ctx, {
+            type: "pie",
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    data: chartValues,
+                    backgroundColor: [
+                        "#2563eb", "#db2777", "#f59e0b", "#16a34a",
+                        "#7c3aed", "#0891b2", "#dc2626", "#65a30d",
+                        "#ea580c", "#4f46e5", "#0d9488"
+                    ]
+                }]
+            },
+            options: {
+                plugins: {
+                    title: {
+                        display: true,
+                        text: `Score Breakdown — Total: ${data.scores.totalScore} / ${data.scores.maxTotalScore}`
+                    }
+                }
+            }
+        });
+
+        document.getElementById("results").scrollIntoView({ behavior: "smooth" });
+
+    }
+
+</script>
+
+</body>
+
+</html>
