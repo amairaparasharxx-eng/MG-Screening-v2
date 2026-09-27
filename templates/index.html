@@ -269,6 +269,39 @@
             border-bottom: 1px solid #eee;
         }
 
+        .consent-card {
+            background: #f0fdf4;
+            border-left: 5px solid #16a34a;
+            padding: 18px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+        .consent-card label {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            margin: 12px 0;
+            line-height: 1.45;
+        }
+        .consent-card input[type="checkbox"] {
+            margin-top: 4px;
+            flex: 0 0 auto;
+        }
+        .transfer-card {
+            background: #eef4ff;
+            border-left: 5px solid #2563eb;
+            padding: 18px;
+            border-radius: 10px;
+            margin-top: 25px;
+        }
+        .transfer-card button {
+            margin-top: 12px;
+        }
+        .transfer-status {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
     </style>
 
 </head>
@@ -323,6 +356,25 @@
         <div class="question">
             <p class="qtext">14. Any medications? (list all that apply)</p>
             <textarea id="q14" name="q14" rows="3" placeholder="e.g. pyridostigmine, prednisone..."></textarea>
+        </div>
+
+        <div class="consent-card">
+            <h3>Consent for questionnaire data</h3>
+            <p>
+                This prototype can store the information you enter, including
+                questionnaire answers and results, only after you give consent.
+                Participation is voluntary. The stored data is intended for the
+                stated research/prototype purpose and is protected behind
+                researcher access controls. This is not a diagnostic service.
+            </p>
+            <label>
+                <input type="checkbox" id="consent-data">
+                <span>I consent to my questionnaire answers and results being stored for the research/prototype purpose.</span>
+            </label>
+            <label>
+                <input type="checkbox" id="consent-transfer">
+                <span>I understand that I may choose to copy my questionnaire summary into the separate Eye Movement Observation program.</span>
+            </label>
         </div>
 
         <button type="submit">Submit Questionnaire</button>
@@ -405,6 +457,14 @@
         <div id="medicationContainer"></div>
 
         <div class="disclaimer" id="finalDisclaimer" style="margin-top: 25px;"></div>
+
+        <div id="transferCard" class="transfer-card" style="display:none;">
+            <h3>Continue with Eye Movement Observation</h3>
+            <p id="transferMessage"></p>
+            <button type="button" id="copySummaryButton">Copy summary data</button>
+            <button type="button" id="eyeTrackingButton" style="display:none;">Open Eye Movement Observation</button>
+            <p id="transferStatus" class="transfer-status"></p>
+        </div>
 
     </div>
 
@@ -518,11 +578,21 @@
 
         });
 
+        const consentBox = document.getElementById("consent-data");
+        if (!consentBox.checked) {
+            alert("Please give consent before submitting the questionnaire.");
+            return;
+        }
+
+        const consentTimestamp = new Date().toISOString();
+
         const payload = {
             name: document.getElementById("q1").value,
             age: document.getElementById("q2").value,
             medications: document.getElementById("q14").value,
-            answers: answers
+            answers: answers,
+            consent: true,
+            consentTimestamp: consentTimestamp
         };
 
         const response = await fetch("/api/analyze", {
@@ -658,6 +728,44 @@
                 }
             }
         });
+
+        const transferCard = document.getElementById("transferCard");
+        const transferMessage = document.getElementById("transferMessage");
+        const copyButton = document.getElementById("copySummaryButton");
+        const eyeButton = document.getElementById("eyeTrackingButton");
+        const transferStatus = document.getElementById("transferStatus");
+
+        transferCard.style.display = "block";
+        transferStatus.textContent = "";
+
+        if (data.scores.totalScore > 70) {
+            transferMessage.textContent =
+                "Your questionnaire score is above the prototype handoff threshold. You can copy your questionnaire summary and continue to the Eye Movement Observation program.";
+        } else {
+            transferMessage.textContent =
+                "You can still copy your questionnaire summary for your own records. The Eye Movement Observation handoff is shown only when the questionnaire score is above 70/110.";
+            eyeButton.style.display = "none";
+        }
+
+        copyButton.onclick = async () => {
+            try {
+                await navigator.clipboard.writeText(JSON.stringify(data.transferPackage));
+                transferStatus.textContent = "Summary data copied. You can paste it into the Eye Movement Observation program.";
+            } catch (err) {
+                const text = JSON.stringify(data.transferPackage);
+                window.prompt("Copy this summary data:", text);
+            }
+        };
+
+        if (data.scores.totalScore > 70 && data.eyeTrackingUrl) {
+            eyeButton.style.display = "block";
+            eyeButton.onclick = () => {
+                window.open(data.eyeTrackingUrl, "_blank", "noopener,noreferrer");
+            };
+        } else if (data.scores.totalScore > 70) {
+            transferStatus.textContent =
+                "The Eye Movement Observation link has not been configured yet. Copy the summary data now; the link can be enabled with the EYE_TRACKING_URL server setting.";
+        }
 
         document.getElementById("results").scrollIntoView({ behavior: "smooth" });
 
