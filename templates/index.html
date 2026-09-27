@@ -774,8 +774,12 @@
             });
         }
 
-        // Final disclaimer
-        document.getElementById("finalDisclaimer").innerHTML = `<strong>Disclaimer:</strong> ${data.disclaimer}`;
+        // Final disclaimer, with an additional safety notice when a red flag was reported.
+        let finalDisclaimerHtml = `<strong>Disclaimer:</strong> ${data.disclaimer}`;
+        if (data.urgentDisclaimer) {
+            finalDisclaimerHtml += `<hr style="margin:16px 0; border:0; border-top:1px solid #fca5a5;"><strong style="color:#991b1b;">${data.urgentDisclaimer}</strong>`;
+        }
+        document.getElementById("finalDisclaimer").innerHTML = finalDisclaimerHtml;
 
         // Pie chart
         const ctx = document.getElementById("scoreChart").getContext("2d");
