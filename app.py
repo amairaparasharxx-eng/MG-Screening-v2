@@ -1,6 +1,59 @@
 from flask import Flask, render_template, request, jsonify
+import json
+import os
+import secrets
+import sqlite3
+import uuid
+from datetime import datetime, timezone
 
 app = Flask(__name__)
+
+DATABASE_PATH = os.environ.get("MG_DATABASE_PATH", "mg_screening_data.sqlite3")
+EYE_TRACKING_URL = os.environ.get("EYE_TRACKING_URL", "").strip()
+ADMIN_ACCESS_TOKEN = os.environ.get("MG_ADMIN_ACCESS_TOKEN", "").strip()
+TRANSFER_VERSION = "mg-screening-transfer-v1"
+
+def init_database():
+    with sqlite3.connect(DATABASE_PATH) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS submissions (
+                id TEXT PRIMARY KEY,
+                created_at TEXT NOT NULL,
+                consent_timestamp TEXT NOT NULL,
+                name TEXT,
+                age TEXT,
+                answers_json TEXT NOT NULL,
+                medications TEXT,
+                results_json TEXT NOT NULL
+            )
+        """)
+        conn.commit()
+
+init_database()
+
+def save_submission(payload, result):
+    submission_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    with sqlite3.connect(DATABASE_PATH) as conn:
+        conn.execute(
+            """INSERT INTO submissions
+               (id, created_at, consent_timestamp, name, age, answers_json, medications, results_json)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                submission_id, now, payload.get("consentTimestamp") or now,
+                payload.get("name", ""), payload.get("age", ""),
+                json.dumps(payload.get("answers", {}), ensure_ascii=False),
+                payload.get("medications", ""),
+                json.dumps(result, ensure_ascii=False),
+            ),
+        )
+        conn.commit()
+    return submission_id
+
+def admin_authorized():
+    supplied = request.headers.get("X-Admin-Token", "")
+    return bool(ADMIN_ACCESS_TOKEN) and secrets.compare_digest(supplied, ADMIN_ACCESS_TOKEN)
+
 
 
 # =========================================================
@@ -334,6 +387,12 @@ def analyze():
             "error": "No questionnaire data was received."
         }), 400
 
+    if data.get("consent") is not True:
+        return jsonify({
+            "success": False,
+            "error": "Consent is required before questionnaire data can be submitted or stored."
+        }), 400
+
     answers = data.get("answers", {})
 
     name = data.get("name", "")
@@ -346,22 +405,15 @@ def analyze():
 
     medication_matches = scan_medications(medications_text)
 
-    return jsonify({
-
-        "success": True,
-
+    result = {
         "name": name,
         "age": age,
-
         "scores": score_results,
-
         "grading": grading,
-
         "medications": {
             "input": medications_text,
             "matches": medication_matches
         },
-
         "disclaimer":
             "This questionnaire is a screening prototype for "
             "informational and educational purposes only. It does "
@@ -373,8 +425,62 @@ def analyze():
             "consult a qualified healthcare professional about new, "
             "persistent, or worsening symptoms, and before starting, "
             "stopping, or changing any medication."
+    }
 
+    submission_id = save_submission(data, result)
+
+    transfer_package = {
+        "format": TRANSFER_VERSION,
+        "createdAt": datetime.now(timezone.utc).isoformat(),
+        "questionnaire": {
+            "name": name,
+            "age": age,
+            "answers": answers,
+            "medications": medications_text,
+            "scores": score_results,
+            "grading": grading
+        }
+    }
+
+    return jsonify({
+        "success": True,
+        **result,
+        "submissionId": submission_id,
+        "transferPackage": transfer_package,
+        "eyeTrackingUrl": EYE_TRACKING_URL,
+        "eyeTrackingThreshold": 70
     })
+
+
+# =========================================================
+# PROTECTED RESEARCHER DATA ACCESS
+# =========================================================
+
+@app.route("/api/admin/submissions", methods=["GET"])
+def admin_submissions():
+    if not admin_authorized():
+        return jsonify({"success": False, "error": "Unauthorized."}), 401
+
+    with sqlite3.connect(DATABASE_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            "SELECT id, created_at, consent_timestamp, name, age, answers_json, medications, results_json FROM submissions ORDER BY created_at DESC"
+        ).fetchall()
+
+    submissions = []
+    for row in rows:
+        submissions.append({
+            "id": row["id"],
+            "createdAt": row["created_at"],
+            "consentTimestamp": row["consent_timestamp"],
+            "name": row["name"],
+            "age": row["age"],
+            "answers": json.loads(row["answers_json"]),
+            "medications": row["medications"],
+            "results": json.loads(row["results_json"])
+        })
+
+    return jsonify({"success": True, "count": len(submissions), "submissions": submissions})
 
 
 # =========================================================
