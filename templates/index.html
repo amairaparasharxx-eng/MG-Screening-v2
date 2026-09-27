@@ -302,6 +302,30 @@
             font-weight: bold;
         }
 
+        .red-flag {
+            display: none;
+            margin-top: 14px;
+            padding: 16px;
+            border-radius: 10px;
+            background: #fef2f2;
+            border: 2px solid #dc2626;
+            color: #991b1b;
+            line-height: 1.5;
+        }
+
+        .red-flag.visible {
+            display: block;
+        }
+
+        .supplementary-note {
+            background: #f8fafc;
+            border-left: 5px solid #64748b;
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin: 15px 0;
+            color: #475569;
+        }
+
     </style>
 
 </head>
@@ -351,11 +375,23 @@
         </p>
         <div id="severity-questions"></div>
 
+        <h2>Additional MG-Related Symptoms</h2>
+        <div class="supplementary-note">
+            These additional questions are included because the symptoms are described in MG research. They are collected as supplementary information and are <strong>not added to the existing prototype score</strong>, because this questionnaire's scoring system has not been clinically validated.
+        </div>
+        <div id="additional-symptom-questions"></div>
+
+        <h2>Factors Associated With Worsening Symptoms</h2>
+        <div class="supplementary-note">
+            Select any factors that you have noticed are associated with periods when your symptoms become worse. This records your experience and does not establish that the factor caused an MG flare.
+        </div>
+        <div id="trigger-questions"></div>
+
         <h2>Medications</h2>
 
         <div class="question">
-            <p class="qtext">14. Any medications? (list all that apply)</p>
-            <textarea id="q14" name="q14" rows="3" placeholder="e.g. pyridostigmine, prednisone..."></textarea>
+            <p class="qtext">21. Any medications? (list all that apply)</p>
+            <textarea id="q21" name="q21" rows="3" placeholder="e.g. pyridostigmine, prednisone..."></textarea>
         </div>
 
         <div class="consent-card">
@@ -392,7 +428,7 @@
             </div>
             <div class="score-card">
                 <div class="value" id="severityScoreValue">0 / 60</div>
-                <div class="label">Symptom Severity Score</div>
+                <div class="label">Existing Symptom Severity Score</div>
             </div>
             <div class="score-card">
                 <div class="value" id="totalScoreValue">0 / 110</div>
@@ -445,6 +481,9 @@
             </tr>
         </table>
 
+        <h3>Additional Symptom & Worsening-Factor Responses</h3>
+        <div id="supplementaryResults"></div>
+
         <h3>Overlapping Symptom Reference</h3>
         <p style="color:#555; font-size: 14px;">
             The symptoms you reported "Yes" to can also occur in other
@@ -486,11 +525,23 @@
 
     const SEVERITY_QUESTIONS = [
         { id: "q8", num: 8, text: "Slurring of speech?" },
-        { id: "q9", num: 9, text: "Trouble eating, chewing, or swallowing?" },
-        { id: "q10", num: 10, text: "Experienced shortness of breath?" },
+        { id: "q9", num: 9, text: "Trouble eating, chewing, or swallowing?", redFlag: true },
+        { id: "q10", num: 10, text: "Experienced shortness of breath?", redFlag: true },
         { id: "q11", num: 11, text: "Ever experienced trouble standing up from a chair?" },
         { id: "q12", num: 12, text: "Ever experienced diplopia (double vision)?" },
         { id: "q13", num: 13, text: "Experienced ptosis (eyelid droop)?" }
+    ];
+
+    const ADDITIONAL_SYMPTOM_QUESTIONS = [
+        { id: "q14", num: 14, text: "Have you experienced difficulty walking steadily or maintaining your balance?", label: "Difficulty walking steadily or maintaining balance" },
+        { id: "q15", num: 15, text: "Have you noticed new or increased facial weakness or asymmetry?", label: "Facial weakness or asymmetry" }
+    ];
+
+    const TRIGGER_QUESTIONS = [
+        { id: "q16", num: 16, text: "Do your symptoms worsen when you are exposed to heat or become overheated?", label: "Heat / overheating" },
+        { id: "q17", num: 17, text: "Do your symptoms worsen during periods of significant physical or emotional stress?", label: "Physical or emotional stress" },
+        { id: "q18", num: 18, text: "Do your symptoms become worse after physical activity or prolonged use of affected muscles?", label: "Physical activity / prolonged muscle use" },
+        { id: "q19", num: 19, text: "Have your symptoms worsened during or following an illness or infection?", label: "Illness / infection" }
     ];
 
     // =====================================================
@@ -516,6 +567,11 @@
             <div class="severity-box" id="${question.id}_severity_box">
                 <p>Rate severity (1 = mild, 10 = severe):</p>
                 <div class="severity-scale">${severityOptions}</div>
+            </div>` : ""}
+            ${question.redFlag ? `
+            <div class="red-flag" id="${question.id}_red_flag">
+                <strong>IMPORTANT — seek urgent medical attention if this is significant or worsening.</strong><br>
+                New or worsening swallowing or breathing difficulty can be associated with serious MG weakness, including myasthenic crisis. This questionnaire cannot determine the cause or severity of your symptoms. If you are having significant or rapidly worsening difficulty breathing or swallowing, seek urgent medical care now.
             </div>` : ""}
         `;
 
@@ -547,6 +603,23 @@
     const severityContainer = document.getElementById("severity-questions");
     SEVERITY_QUESTIONS.forEach(q => renderYesNo(severityContainer, q, true));
 
+    const additionalContainer = document.getElementById("additional-symptom-questions");
+    ADDITIONAL_SYMPTOM_QUESTIONS.forEach(q => renderYesNo(additionalContainer, q, true));
+
+    const triggerContainer = document.getElementById("trigger-questions");
+    TRIGGER_QUESTIONS.forEach(q => renderYesNo(triggerContainer, q, false));
+
+    // Breathing/swallowing are safety red flags: show the warning immediately.
+    [...SEVERITY_QUESTIONS.filter(q => q.redFlag)].forEach(q => {
+        document.querySelectorAll(`input[name="${q.id}_answer"]`).forEach(radio => {
+            radio.addEventListener("change", () => {
+                const warning = document.getElementById(`${q.id}_red_flag`);
+                if (radio.value === "yes" && radio.checked) warning.classList.add("visible");
+                if (radio.value === "no" && radio.checked) warning.classList.remove("visible");
+            });
+        });
+    });
+
     // =====================================================
     // COLLECT ANSWERS & SUBMIT
     // =====================================================
@@ -559,7 +632,7 @@
 
         const answers = {};
 
-        [...RISK_QUESTIONS, ...SEVERITY_QUESTIONS].forEach(q => {
+        [...RISK_QUESTIONS, ...SEVERITY_QUESTIONS, ...ADDITIONAL_SYMPTOM_QUESTIONS, ...TRIGGER_QUESTIONS].forEach(q => {
 
             const answerRadio = document.querySelector(`input[name="${q.id}_answer"]:checked`);
             const isYes = answerRadio ? answerRadio.value === "yes" : false;
@@ -589,7 +662,7 @@
         const payload = {
             name: document.getElementById("q1").value,
             age: document.getElementById("q2").value,
-            medications: document.getElementById("q14").value,
+            medications: document.getElementById("q21").value,
             answers: answers,
             consent: true,
             consentTimestamp: consentTimestamp
@@ -646,6 +719,24 @@
             tr.innerHTML = `<td>${row.label}</td><td>${row.answer}</td><td>${row.score} / ${row.max}</td>`;
             breakdownTable.appendChild(tr);
         });
+
+        // Supplementary symptom and worsening-factor responses
+        const supplementaryResults = document.getElementById("supplementaryResults");
+        supplementaryResults.innerHTML = "";
+
+        const allSupplementary = [...ADDITIONAL_SYMPTOM_QUESTIONS, ...TRIGGER_QUESTIONS];
+        const supplementaryRows = allSupplementary.map(q => {
+            const response = data.transferPackage.questionnaire.answers[q.id] || { answer: false, severity: null };
+            return `<tr><td>${q.label}</td><td>${response.answer ? "Yes" : "No"}</td><td>${response.severity ? response.severity + "/10" : "—"}</td></tr>`;
+        }).join("");
+
+        supplementaryResults.innerHTML = `
+            <table class="breakdown-table">
+                <tr><th>Item</th><th>Response</th><th>Severity</th></tr>
+                ${supplementaryRows}
+            </table>
+            <p class="supplementary-note">These responses are supplementary information and are not included in the existing prototype risk score.</p>
+        `;
 
         // Overlap cards
         const overlapContainer = document.getElementById("overlapContainer");
