@@ -81,7 +81,10 @@ def home():
 # q11 - Trouble standing from a chair (yes/no -> severity 1-10 / 0)
 # q12 - Diplopia (double vision)  (yes/no -> severity 1-10 / 0)
 # q13 - Ptosis (eyelid droop)     (yes/no -> severity 1-10 / 0)
-# q14 - Medications               (text, not scored directly)
+# q14 - Difficulty walking/balance (supplementary, not scored)
+# q15 - Facial weakness/asymmetry  (supplementary, not scored)
+# q16-q19 - Worsening factors      (supplementary, not scored)
+# q21 - Medications                (text, not scored directly)
 
 RISK_QUESTIONS = ["q3", "q4", "q5", "q6", "q7"]
 
@@ -99,6 +102,20 @@ QUESTION_LABELS = {
     "q11": "Trouble standing up from a chair",
     "q12": "Diplopia (double vision)",
     "q13": "Ptosis (eyelid droop)"
+}
+
+SUPPLEMENTARY_QUESTIONS = {
+    "q14": "Difficulty walking steadily or maintaining balance",
+    "q15": "Facial weakness or asymmetry",
+    "q16": "Heat / overheating associated with worsening symptoms",
+    "q17": "Physical or emotional stress associated with worsening symptoms",
+    "q18": "Physical activity / prolonged muscle use associated with worsening symptoms",
+    "q19": "Illness / infection associated with worsening symptoms"
+}
+
+RED_FLAG_QUESTIONS = {
+    "q9": "Swallowing difficulty",
+    "q10": "Breathing difficulty"
 }
 
 MAX_RISK_SCORE = len(RISK_QUESTIONS) * 10          # 50
@@ -405,10 +422,36 @@ def analyze():
 
     medication_matches = scan_medications(medications_text)
 
+    supplementary_responses = {}
+    for question_id, label in SUPPLEMENTARY_QUESTIONS.items():
+        response = answers.get(question_id, {})
+        supplementary_responses[question_id] = {
+            "label": label,
+            "answer": response.get("answer") is True,
+            "severity": response.get("severity") if response.get("answer") is True else None
+        }
+
+    red_flags = []
+    for question_id, label in RED_FLAG_QUESTIONS.items():
+        response = answers.get(question_id, {})
+        if response.get("answer") is True:
+            red_flags.append({
+                "question": question_id,
+                "label": label,
+                "message": (
+                    "New or worsening swallowing or breathing difficulty can be associated "
+                    "with serious MG weakness, including myasthenic crisis. This questionnaire "
+                    "cannot determine the cause or severity of the symptom. Significant or "
+                    "rapidly worsening breathing or swallowing difficulty requires urgent medical attention."
+                )
+            })
+
     result = {
         "name": name,
         "age": age,
         "scores": score_results,
+        "supplementaryResponses": supplementary_responses,
+        "redFlags": red_flags,
         "grading": grading,
         "medications": {
             "input": medications_text,
@@ -426,6 +469,14 @@ def analyze():
             "persistent, or worsening symptoms, and before starting, "
             "stopping, or changing any medication."
     }
+
+    if red_flags:
+        result["urgentDisclaimer"] = (
+            "URGENT SAFETY NOTICE: A yes response to a breathing or swallowing question "
+            "has been recorded. This questionnaire cannot determine whether the symptom "
+            "is caused by MG or another condition. If the difficulty is significant or "
+            "rapidly worsening, seek urgent medical attention now."
+        )
 
     submission_id = save_submission(data, result)
 
