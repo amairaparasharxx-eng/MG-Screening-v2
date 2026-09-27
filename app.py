@@ -107,10 +107,7 @@ QUESTION_LABELS = {
 SUPPLEMENTARY_QUESTIONS = {
     "q14": "Difficulty walking steadily or maintaining balance",
     "q15": "Facial weakness or asymmetry",
-    "q16": "Heat / overheating associated with worsening symptoms",
-    "q17": "Physical or emotional stress associated with worsening symptoms",
-    "q18": "Physical activity / prolonged muscle use associated with worsening symptoms",
-    "q19": "Illness / infection associated with worsening symptoms"
+    "q16": "Factors associated with worsening symptoms (free-text response)"
 }
 
 RED_FLAG_QUESTIONS = {
@@ -428,7 +425,8 @@ def analyze():
         supplementary_responses[question_id] = {
             "label": label,
             "answer": response.get("answer") is True,
-            "severity": response.get("severity") if response.get("answer") is True else None
+            "severity": response.get("severity") if response.get("answer") is True else None,
+            "text": response.get("text", "")
         }
 
     red_flags = []
