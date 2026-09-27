@@ -383,15 +383,20 @@
 
         <h2>Factors Associated With Worsening Symptoms</h2>
         <div class="supplementary-note">
-            Select any factors that you have noticed are associated with periods when your symptoms become worse. This records your experience and does not establish that the factor caused an MG flare.
+            <strong>Research-supported factors to consider:</strong> heat or temperature extremes, physical or emotional stress, physical exertion/prolonged muscle use, infection or illness, lack of sleep, pain, surgery or anaesthesia, injury/trauma, menstrual periods (if applicable), pregnancy/postpartum changes (if applicable), thyroid problems, and recent medication changes or missed/withdrawn treatment.
+            <br><br>
+            These factors have been reported in MG literature as possible precipitants of clinical worsening or myasthenic crisis. This question records your experience and does not establish that any factor caused your symptoms.
         </div>
-        <div id="trigger-questions"></div>
+        <div class="question">
+            <p class="qtext">16. Have you noticed any of the factors above, or another situation, being associated with periods when your MG-like symptoms become worse? Please describe what happened and, if possible, when it occurred.</p>
+            <textarea id="q16" name="q16" rows="5" placeholder="Example: My symptoms seem worse after poor sleep and during an infection."></textarea>
+        </div>
 
         <h2>Medications</h2>
 
         <div class="question">
-            <p class="qtext">21. Any medications? (list all that apply)</p>
-            <textarea id="q21" name="q21" rows="3" placeholder="e.g. pyridostigmine, prednisone..."></textarea>
+            <p class="qtext">17. Any medications? (list all that apply)</p>
+            <textarea id="q17" name="q17" rows="3" placeholder="e.g. pyridostigmine, prednisone..."></textarea>
         </div>
 
         <div class="consent-card">
@@ -538,10 +543,7 @@
     ];
 
     const TRIGGER_QUESTIONS = [
-        { id: "q16", num: 16, text: "Do your symptoms worsen when you are exposed to heat or become overheated?", label: "Heat / overheating" },
-        { id: "q17", num: 17, text: "Do your symptoms worsen during periods of significant physical or emotional stress?", label: "Physical or emotional stress" },
-        { id: "q18", num: 18, text: "Do your symptoms become worse after physical activity or prolonged use of affected muscles?", label: "Physical activity / prolonged muscle use" },
-        { id: "q19", num: 19, text: "Have your symptoms worsened during or following an illness or infection?", label: "Illness / infection" }
+        { id: "q16", num: 16, label: "Factors associated with worsening symptoms (free-text response)" }
     ];
 
     // =====================================================
@@ -606,9 +608,6 @@
     const additionalContainer = document.getElementById("additional-symptom-questions");
     ADDITIONAL_SYMPTOM_QUESTIONS.forEach(q => renderYesNo(additionalContainer, q, true));
 
-    const triggerContainer = document.getElementById("trigger-questions");
-    TRIGGER_QUESTIONS.forEach(q => renderYesNo(triggerContainer, q, false));
-
     // Breathing/swallowing are safety red flags: show the warning immediately.
     [...SEVERITY_QUESTIONS.filter(q => q.redFlag)].forEach(q => {
         document.querySelectorAll(`input[name="${q.id}_answer"]`).forEach(radio => {
@@ -632,7 +631,7 @@
 
         const answers = {};
 
-        [...RISK_QUESTIONS, ...SEVERITY_QUESTIONS, ...ADDITIONAL_SYMPTOM_QUESTIONS, ...TRIGGER_QUESTIONS].forEach(q => {
+        [...RISK_QUESTIONS, ...SEVERITY_QUESTIONS, ...ADDITIONAL_SYMPTOM_QUESTIONS].forEach(q => {
 
             const answerRadio = document.querySelector(`input[name="${q.id}_answer"]:checked`);
             const isYes = answerRadio ? answerRadio.value === "yes" : false;
@@ -651,6 +650,10 @@
 
         });
 
+        answers.q16 = {
+            text: document.getElementById("q16").value.trim()
+        };
+
         const consentBox = document.getElementById("consent-data");
         if (!consentBox.checked) {
             alert("Please give consent before submitting the questionnaire.");
@@ -662,7 +665,7 @@
         const payload = {
             name: document.getElementById("q1").value,
             age: document.getElementById("q2").value,
-            medications: document.getElementById("q21").value,
+            medications: document.getElementById("q17").value,
             answers: answers,
             consent: true,
             consentTimestamp: consentTimestamp
@@ -724,16 +727,18 @@
         const supplementaryResults = document.getElementById("supplementaryResults");
         supplementaryResults.innerHTML = "";
 
-        const allSupplementary = [...ADDITIONAL_SYMPTOM_QUESTIONS, ...TRIGGER_QUESTIONS];
-        const supplementaryRows = allSupplementary.map(q => {
+        const supplementaryRows = ADDITIONAL_SYMPTOM_QUESTIONS.map(q => {
             const response = data.transferPackage.questionnaire.answers[q.id] || { answer: false, severity: null };
             return `<tr><td>${q.label}</td><td>${response.answer ? "Yes" : "No"}</td><td>${response.severity ? response.severity + "/10" : "—"}</td></tr>`;
         }).join("");
+        const triggerText = (data.transferPackage.questionnaire.answers.q16 || {}).text || "No response provided.";
+        const triggerRow = `<tr><td>Factors associated with worsening symptoms</td><td colspan="2">${escapeHtml(triggerText)}</td></tr>`;
 
         supplementaryResults.innerHTML = `
             <table class="breakdown-table">
                 <tr><th>Item</th><th>Response</th><th>Severity</th></tr>
                 ${supplementaryRows}
+                ${triggerRow}
             </table>
             <p class="supplementary-note">These responses are supplementary information and are not included in the existing prototype risk score.</p>
         `;
