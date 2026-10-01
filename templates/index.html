@@ -417,6 +417,10 @@
                 <input type="checkbox" id="consent-transfer">
                 <span>I understand that I may choose to copy my questionnaire summary into the separate Eye Movement Observation program.</span>
             </label>
+            <label>
+                <input type="checkbox" id="consent-diagnostic">
+                <span>I understand that this program is not a diagnostic tool, and that its results must not be treated as a diagnosis or a substitute for advice from a qualified healthcare professional.</span>
+            </label>
         </div>
 
         <button type="submit">Submit Questionnaire</button>
@@ -657,8 +661,9 @@
         };
 
         const consentBox = document.getElementById("consent-data");
-        if (!consentBox.checked) {
-            alert("Please give consent before submitting the questionnaire.");
+        const diagnosticConsentBox = document.getElementById("consent-diagnostic");
+        if (!consentBox.checked || !diagnosticConsentBox.checked) {
+            alert("Please confirm all required consent statements before submitting the questionnaire.");
             return;
         }
 
@@ -670,6 +675,7 @@
             medications: document.getElementById("q17").value,
             answers: answers,
             consent: true,
+            diagnosticConsent: true,
             consentTimestamp: consentTimestamp
         };
 
@@ -862,7 +868,7 @@
                 "Your questionnaire score meets the prototype handoff threshold. You can copy your questionnaire summary and continue to the Eye Movement Observation program.";
         } else {
             transferMessage.textContent =
-                "You can still copy your questionnaire summary for your own records. The Eye Movement Observation handoff is shown when the questionnaire score is 40/110 or higher.";
+                "You can still copy your questionnaire summary for your own records. The Eye Movement Observation handoff is shown when the questionnaire score is 40/100 or higher.";
             eyeButton.style.display = "none";
         }
 
