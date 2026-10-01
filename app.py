@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 app = Flask(__name__)
 
 DATABASE_PATH = os.environ.get("MG_DATABASE_PATH", "mg_screening_data.sqlite3")
-EYE_TRACKING_URL = os.environ.get("EYE_TRACKING_URL", "").strip()
+EYE_TRACKING_URL = os.environ.get("EYE_TRACKING_URL", "").strip() or "https://eye-tracking-v2.onrender.com/"
 ADMIN_ACCESS_TOKEN = os.environ.get("MG_ADMIN_ACCESS_TOKEN", "").strip()
 TRANSFER_VERSION = "mg-screening-transfer-v1"
 
