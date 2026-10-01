@@ -692,6 +692,15 @@
     // RENDER RESULTS
     // =====================================================
 
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
     function renderResults(data) {
 
         document.getElementById("results").style.display = "block";
@@ -838,12 +847,12 @@
         transferCard.style.display = "block";
         transferStatus.textContent = "";
 
-        if (data.scores.totalScore > 70) {
+        if (data.scores.totalScore >= 70) {
             transferMessage.textContent =
-                "Your questionnaire score is above the prototype handoff threshold. You can copy your questionnaire summary and continue to the Eye Movement Observation program.";
+                "Your questionnaire score meets the prototype handoff threshold. You can copy your questionnaire summary and continue to the Eye Movement Observation program.";
         } else {
             transferMessage.textContent =
-                "You can still copy your questionnaire summary for your own records. The Eye Movement Observation handoff is shown only when the questionnaire score is above 70/110.";
+                "You can still copy your questionnaire summary for your own records. The Eye Movement Observation handoff is shown when the questionnaire score is 70/110 or higher.";
             eyeButton.style.display = "none";
         }
 
@@ -857,12 +866,12 @@
             }
         };
 
-        if (data.scores.totalScore > 70 && data.eyeTrackingUrl) {
+        if (data.scores.totalScore >= 70 && data.eyeTrackingUrl) {
             eyeButton.style.display = "block";
             eyeButton.onclick = () => {
                 window.open(data.eyeTrackingUrl, "_blank", "noopener,noreferrer");
             };
-        } else if (data.scores.totalScore > 70) {
+        } else if (data.scores.totalScore >= 70) {
             transferStatus.textContent =
                 "The Eye Movement Observation link has not been configured yet. Copy the summary data now; the link can be enabled with the EYE_TRACKING_URL server setting.";
         }
