@@ -115,9 +115,40 @@ RED_FLAG_QUESTIONS = {
     "q10": "Breathing difficulty"
 }
 
-MAX_RISK_SCORE = len(RISK_QUESTIONS) * 10          # 50
-MAX_SEVERITY_SCORE = len(SEVERITY_QUESTIONS) * 10  # 60
-MAX_TOTAL_SCORE = MAX_RISK_SCORE + MAX_SEVERITY_SCORE  # 110
+# Research-informed prototype relevance weights. These are design choices,
+# NOT a validated clinical scoring system.
+QUESTION_WEIGHTS = {
+    "q3": 20, "q4": 5, "q5": 3, "q6": 2, "q7": 3,
+    "q8": 8, "q9": 12, "q10": 12, "q11": 8, "q12": 12, "q13": 15
+}
+
+MAX_RISK_SCORE = sum(QUESTION_WEIGHTS[q] for q in RISK_QUESTIONS)
+MAX_SEVERITY_SCORE = sum(QUESTION_WEIGHTS[q] for q in SEVERITY_QUESTIONS)
+MAX_TOTAL_SCORE = MAX_RISK_SCORE + MAX_SEVERITY_SCORE  # 100
+
+TRIGGER_KEYWORDS = {
+    "Heat / temperature": ["heat", "hot", "temperature", "humidity", "humid", "cold"],
+    "Physical or emotional stress": ["stress", "stressed", "anxiety", "emotional stress", "physical stress"],
+    "Physical exertion / prolonged activity": ["exercise", "exertion", "workout", "activity", "overexertion", "prolonged activity", "repetitive activity"],
+    "Infection / illness": ["infection", "infected", "illness", "sick", "fever", "cold", "flu"],
+    "Poor sleep / sleep deprivation": ["sleep", "sleepless", "insomnia", "poor sleep", "lack of sleep", "sleep deprivation"],
+    "Pain": ["pain", "painful", "ache", "headache"],
+    "Surgery / anaesthesia": ["surgery", "operation", "anaesthesia", "anesthesia", "anaesthetic", "anesthetic"],
+    "Injury / trauma": ["injury", "injured", "trauma", "accident"],
+    "Menstrual cycle": ["period", "periods", "menstrual", "menstruation", "pms", "premenstrual"],
+    "Pregnancy / postpartum": ["pregnancy", "pregnant", "postpartum", "after delivery", "after birth"],
+    "Thyroid problems": ["thyroid", "hyperthyroid", "hypothyroid", "hyperthyroidism", "hypothyroidism"],
+    "Medication change / missed treatment": ["medication change", "changed medication", "new medication", "stopped medication", "missed medication", "missed dose", "dose change", "treatment change", "stopped treatment"]
+}
+
+def detect_trigger_factors(text):
+    if not isinstance(text, str):
+        return []
+    normalized = " ".join(text.lower().split())
+    return [
+        factor for factor, keywords in TRIGGER_KEYWORDS.items()
+        if any(keyword in normalized for keyword in keywords)
+    ]
 
 
 # =========================================================
@@ -248,7 +279,8 @@ def calculate_score(answers):
         response = answers.get(question, {})
         is_yes = response.get("answer") is True
 
-        points = 10 if is_yes else 0
+        max_points = QUESTION_WEIGHTS[question]
+        points = max_points if is_yes else 0
         risk_score += points
 
         breakdown.append({
@@ -256,7 +288,7 @@ def calculate_score(answers):
             "label": QUESTION_LABELS[question],
             "answer": "Yes" if is_yes else "No",
             "score": points,
-            "max": 10
+            "max": max_points
         })
 
     for question in SEVERITY_QUESTIONS:
@@ -276,14 +308,17 @@ def calculate_score(answers):
         else:
             severity_value = max(1, min(10, severity_value))
 
-        severity_score += severity_value
+        max_points = QUESTION_WEIGHTS[question]
+        weighted_points = round((severity_value / 10) * max_points, 1)
+        severity_score += weighted_points
 
         breakdown.append({
             "question": question,
             "label": QUESTION_LABELS[question],
             "answer": "Yes" if is_yes else "No",
-            "score": severity_value,
-            "max": 10
+            "score": weighted_points,
+            "rawSeverity": severity_value,
+            "max": max_points
         })
 
         if is_yes:
@@ -318,46 +353,19 @@ def calculate_score(answers):
 
 def grade_score(total_score):
 
-    if total_score <= 15:
-
-        return {
-            "band": "Low",
-            "range": "0-15",
-            "description":
-                "Few reported risk factors or symptoms. "
-                "Low apparent likelihood based on this screen alone."
-        }
-
-    elif total_score <= 40:
-
-        return {
-            "band": "Mild-Moderate",
-            "range": "16-40",
-            "description":
-                "Some risk factors and/or mild symptoms reported. "
-                "Consider monitoring and discussing with a clinician."
-        }
-
-    elif total_score <= 70:
-
-        return {
-            "band": "Moderate-High",
-            "range": "41-70",
-            "description":
-                "Multiple risk factors and/or moderate-severity symptoms "
-                "reported. Medical evaluation is reasonable."
-        }
-
+    if total_score < 20:
+        return {"band": "Lower prototype score", "range": "0-19",
+                "description": "Fewer weighted questionnaire items were reported as positive."}
+    elif total_score < 40:
+        return {"band": "Intermediate prototype score", "range": "20-39",
+                "description": "A number of weighted questionnaire items were reported as positive."}
+    elif total_score < 70:
+        return {"band": "Higher prototype score", "range": "40-69",
+                "description": "Several higher-weighted symptoms or history items were reported as positive."}
     else:
+        return {"band": "Highest prototype score band", "range": "70-100",
+                "description": "Multiple high-weighted questionnaire items were reported as positive."}
 
-        return {
-            "band": "High",
-            "range": "71-110",
-            "description":
-                "Substantial risk factors and/or severe symptoms reported. "
-                "Prompt evaluation by a qualified healthcare professional "
-                "is recommended."
-        }
 
 
 # =========================================================
@@ -417,6 +425,9 @@ def analyze():
 
     grading = grade_score(score_results["totalScore"])
 
+    trigger_text = answers.get("q16", {}).get("text", "")
+    detected_factors = detect_trigger_factors(trigger_text)
+
     medication_matches = scan_medications(medications_text)
 
     supplementary_responses = {}
@@ -449,6 +460,7 @@ def analyze():
         "age": age,
         "scores": score_results,
         "supplementaryResponses": supplementary_responses,
+        "detectedFactors": detected_factors,
         "redFlags": red_flags,
         "grading": grading,
         "medications": {
@@ -497,7 +509,7 @@ def analyze():
         "submissionId": submission_id,
         "transferPackage": transfer_package,
         "eyeTrackingUrl": EYE_TRACKING_URL,
-        "eyeTrackingThreshold": 70
+        "eyeTrackingThreshold": 40
     })
 
 
