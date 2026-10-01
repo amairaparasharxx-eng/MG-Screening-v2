@@ -388,8 +388,9 @@
             These factors have been reported in MG literature as possible precipitants of clinical worsening or myasthenic crisis. This question records your experience and does not establish that any factor caused your symptoms.
         </div>
         <div class="question">
-            <p class="qtext">16. Have you noticed any of the factors above, or another situation, being associated with periods when your MG-like symptoms become worse? Please describe what happened and, if possible, when it occurred.</p>
-            <textarea id="q16" name="q16" rows="5" placeholder="Example: My symptoms seem worse after poor sleep and during an infection."></textarea>
+            <p class="qtext">16. Have you noticed any of the factors above, or another situation, being associated with periods when your symptoms become worse?</p>
+            <p style="color:#555;font-size:14px;">You can answer in one word, a short phrase, or a sentence. The program will look for research-supported keywords and group them into factor categories.</p>
+            <textarea id="q16" name="q16" rows="4" placeholder="Examples: heat; poor sleep; infection; stress; exercise; surgery; period; medication change"></textarea>
         </div>
 
         <h2>Medications</h2>
@@ -429,20 +430,20 @@
         <div class="score-summary">
             <div class="score-card">
                 <div class="value" id="riskScoreValue">0 / 50</div>
-                <div class="label">Diagnosis / Risk Factor Score</div>
+                <div class="label">Weighted Prototype Score</div>
             </div>
             <div class="score-card">
                 <div class="value" id="severityScoreValue">0 / 60</div>
-                <div class="label">Existing Symptom Severity Score</div>
+                <div class="label">Weighted Symptom Score</div>
             </div>
             <div class="score-card">
                 <div class="value" id="totalScoreValue">0 / 110</div>
-                <div class="label">Total Score</div>
+                <div class="label">Total Weighted Score</div>
             </div>
         </div>
 
         <div class="grading-key">
-            <h3>Likelihood Grading Key</h3>
+            <h3>Prototype Score Bands</h3>
             <table id="gradingTable">
                 <tr>
                     <th>Band</th>
@@ -451,26 +452,26 @@
                 </tr>
                 <tr data-band="Low">
                     <td>Low</td>
-                    <td>0-15</td>
-                    <td>Few risk factors or symptoms reported</td>
+                    <td>0-19</td>
+                    <td>Fewer weighted questionnaire items reported positive</td>
                 </tr>
                 <tr data-band="Mild-Moderate">
                     <td>Mild-Moderate</td>
-                    <td>16-40</td>
-                    <td>Some risk factors and/or mild symptoms</td>
+                    <td>20-39</td>
+                    <td>Some weighted questionnaire items reported positive</td>
                 </tr>
                 <tr data-band="Moderate-High">
                     <td>Moderate-High</td>
-                    <td>41-70</td>
-                    <td>Multiple risk factors and/or moderate symptoms</td>
+                    <td>40-69</td>
+                    <td>Several higher-weighted symptoms or history items reported positive</td>
                 </tr>
                 <tr data-band="High">
                     <td>High</td>
-                    <td>71-110</td>
-                    <td>Substantial risk factors and/or severe symptoms</td>
+                    <td>70-100</td>
+                    <td>Multiple high-weighted questionnaire items reported positive</td>
                 </tr>
             </table>
-            <p id="gradingDescription" style="margin-top: 12px; font-weight: bold;"></p>
+            <p id="gradingDescription" style="margin-top: 12px; font-weight: bold;"></p><p style="margin-top:10px;color:#555;font-size:13px;">The weights are research-informed prototype design choices based on the clinical relevance of the question categories. They are not a validated diagnostic or probability scale.</p>
         </div>
 
         <div class="chart-wrap">
@@ -488,6 +489,7 @@
 
         <h3>Additional Symptom & Worsening-Factor Responses</h3>
         <div id="supplementaryResults"></div>
+        <div id="detectedFactorsContainer" class="supplementary-note" style="display:none;"></div>
 
         <h3>Overlapping Symptom Reference</h3>
         <p style="color:#555; font-size: 14px;">
@@ -749,8 +751,16 @@
                 ${supplementaryRows}
                 ${triggerRow}
             </table>
-            <p class="supplementary-note">These responses are supplementary information and are not included in the existing prototype risk score.</p>
+            <p class="supplementary-note">These responses are supplementary information and are not included in the weighted prototype score.</p>
         `;
+
+        const detectedFactorsContainer = document.getElementById("detectedFactorsContainer");
+        detectedFactorsContainer.style.display = "block";
+        if (data.detectedFactors && data.detectedFactors.length) {
+            detectedFactorsContainer.innerHTML = "<strong>Factors detected from your response:</strong> " + data.detectedFactors.map(f => escapeHtml(f)).join(", ") + ". These are keyword matches for information organization only; they do not establish that a factor caused the symptoms.";
+        } else {
+            detectedFactorsContainer.innerHTML = "<strong>No predefined factor keywords were detected.</strong> You can still review your original response above. A missing keyword match does not mean the factor was absent.";
+        }
 
         // Overlap cards
         const overlapContainer = document.getElementById("overlapContainer");
