@@ -423,6 +423,14 @@
             </label>
         </div>
 
+        <div class="question">
+            <p class="qtext">Optional contact information</p>
+            <input type="text" id="contact-info" name="contact-info" placeholder="Phone number or email">
+            <p style="color:#555;font-size:13px;margin-top:6px;">
+                Optional. If you provide it, it will be stored with your questionnaire submission so you can be contacted about the research/prototype.
+            </p>
+        </div>
+
         <button type="submit">Submit Questionnaire</button>
 
     </form>
@@ -671,7 +679,7 @@
 
         const payload = {
             name: document.getElementById("q1").value,
-            age: document.getElementById("q2").value,
+            age: document.getElementById("q2").value,\n            contact: document.getElementById("contact-info").value.trim(),
             medications: document.getElementById("q17").value,
             answers: answers,
             consent: true,
